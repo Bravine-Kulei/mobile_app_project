@@ -1,40 +1,46 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_blue/flutter_blue.dart';
 
 class BluetoothHelper {
-  FlutterBlue flutterBlue = FlutterBlue.instance;
-  StreamController<String> messageController = StreamController<String>();
+  final BluetoothDevice device;
+  BluetoothCharacteristic? _characteristic;
 
-  Future<List<BluetoothDevice>> getPairedDevices() async {
-    // Start scanning
-    flutterBlue.startScan(timeout: const Duration(seconds: 4));
+  BluetoothHelper({required this.device});
 
-    // Listen to scan results
-    List<BluetoothDevice> devices = [];
-    flutterBlue.scanResults.listen((results) {
-      for (ScanResult r in results) {
-        devices.add(r.device);
-      }
-    });
-
-    // Stop scanning
-    await Future.delayed(const Duration(seconds: 4));
-    flutterBlue.stopScan();
-
-    // Return devices after scanning
-    return devices;
-  }
-
-  Future<void> sendMessage(String message, BluetoothDevice device) async {
+  Future<void> connectToDevice() async {
+    await device.connect();
     List<BluetoothService> services = await device.discoverServices();
-    for (var service in services) {
-      var characteristics = service.characteristics;
-      for (BluetoothCharacteristic c in characteristics) {
-        if (c.properties.write) {
-          c.write(utf8.encode(message));
+    for (BluetoothService service in services) {
+      for (BluetoothCharacteristic characteristic in service.characteristics) {
+        if (characteristic.properties.write) {
+          _characteristic = characteristic;
+          break;
         }
       }
+      if (_characteristic != null) break;
     }
+  }
+
+  Future<void> disconnect() async {
+    await device.disconnect();
+  }
+
+  Future<void> sendMessage(String message) async {
+    if (_characteristic != null) {
+      List<int> bytes = utf8.encode(message);
+      await _characteristic!.write(bytes);
+    } else {
+      throw Exception("No writable characteristic found");
+    }
+  }
+
+  Future<void> startScanning() async {
+    FlutterBlue.instance.startScan(timeout: Duration(seconds: 4));
+  }
+
+  Stream<List<ScanResult>> get scanResults => FlutterBlue.instance.scanResults;
+
+  Future<void> stopScanning() async {
+    FlutterBlue.instance.stopScan();
   }
 }

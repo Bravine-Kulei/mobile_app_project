@@ -1,59 +1,58 @@
 import 'package:flutter/material.dart';
-import 'bluetooth_helper.dart';
 import 'package:flutter_blue/flutter_blue.dart';
+import 'bluetooth_helper.dart';
+import 'message.dart'; // Import the Message class
 
 class ChatScreen extends StatefulWidget {
   final BluetoothHelper bluetoothHelper;
   final BluetoothDevice device;
 
-  const ChatScreen({Key? key, required this.bluetoothHelper, required this.device}) : super(key: key);
+  const ChatScreen(
+      {Key? key, required this.bluetoothHelper, required this.device})
+      : super(key: key);
 
   @override
   _ChatScreenState createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  List<String> messages = [];
-  final TextEditingController _controller = TextEditingController();
+  final TextEditingController _messageController = TextEditingController();
+  final List<Message> _messages = [];
 
-  void _sendMessage(String message) {
-    setState(() {
-      messages.add(message);
-    });
-    widget.bluetoothHelper.sendMessage(message, widget.device);
-    _controller.clear();
+  @override
+  void dispose() {
+    _messageController.dispose();
+    widget.bluetoothHelper.disconnect();
+    super.dispose();
+  }
+
+  void _sendMessage() {
+    String messageText = _messageController.text.trim();
+    if (messageText.isNotEmpty) {
+      Message message = Message(
+        content: messageText,
+        sender: 'Me',
+        timestamp: DateTime.now(),
+      );
+      setState(() {
+        _messages.add(message);
+      });
+      widget.bluetoothHelper.sendMessage(messageText);
+      _messageController.clear();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Chat with ${widget.device.name}'),
-        backgroundColor: Colors.blueAccent,
-      ),
+      appBar: AppBar(title: Text('Chat with ${widget.device.name}')),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
-              itemCount: messages.length,
+              itemCount: _messages.length,
               itemBuilder: (context, index) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Colors.grey.shade200,
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        messages[index],
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                    ),
-                  ),
-                );
+                return MessageBubble(message: _messages[index]);
               },
             ),
           ),
@@ -63,29 +62,65 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                    controller: _messageController,
+                    decoration: const InputDecoration(
+                      hintText: 'Type your message...',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  color: Colors.blueAccent,
-                  onPressed: () {
-                    if (_controller.text.isNotEmpty) {
-                      _sendMessage(_controller.text);
-                    }
-                  },
+                  onPressed: _sendMessage,
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class MessageBubble extends StatelessWidget {
+  final Message message;
+
+  const MessageBubble({Key? key, required this.message}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    bool isMe = message.sender == 'Me';
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.blue : Colors.grey,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message.sender,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              message.content,
+              style: const TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              message.timestamp.toString(),
+              style: const TextStyle(color: Colors.white, fontSize: 10),
+            ),
+          ],
+        ),
       ),
     );
   }

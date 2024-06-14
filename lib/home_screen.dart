@@ -1,33 +1,36 @@
 import 'package:flutter/material.dart';
-import 'device_list_screen.dart';
-import 'bluetooth_helper.dart';
+import 'device_screen_list.dart';
+import 'settings_screen.dart'; // Import SettingsScreen
 
 class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home Screen'),
-        backgroundColor: Colors.blueAccent,
+        title: Text('Home'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        SettingsScreen()), // Remove onThemeChanged parameter
+              );
+            },
+          ),
+        ],
       ),
       body: Center(
         child: ElevatedButton(
           onPressed: () {
-            BluetoothHelper bluetoothHelper = BluetoothHelper();
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) =>
-                    DeviceListScreen(bluetoothHelper: bluetoothHelper),
-              ),
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => DeviceListScreen()),
             );
           },
           child: Text('Start Chat'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blueAccent,
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            textStyle: TextStyle(fontSize: 16),
-          ),
         ),
       ),
     );
